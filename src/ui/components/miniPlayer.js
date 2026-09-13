@@ -13,23 +13,29 @@ export class MiniPlayer {
 
   render() {
     this.container.innerHTML = `
-      <img class="mini-cover" id="mini-cover" src="/icon.svg" alt="Cover" />
+      <div class="mini-cover-wrapper">
+        <img class="mini-cover" id="mini-cover" src="./apple-touch-icon.png" alt="Cover" />
+        <div class="mini-cover-placeholder">🎙️</div>
+      </div>
       <div class="mini-info">
         <div class="mini-title" id="mini-title">No episode playing</div>
         <div class="mini-subtitle">
           <span id="mini-subtitle">PodPulse</span>
           <span>•</span>
-          <span class="ad-free-tag">⚡ Ad-Free</span>
+          <span class="ad-free-tag">⚡ Ad Shield</span>
         </div>
       </div>
       <div class="mini-controls">
+        <button class="mini-btn skip-ad-btn" id="mini-skip-ad-btn" title="⚡ Skip Ad Break (+60s)" aria-label="Skip Ad">
+          <span style="font-size: 13px; font-weight: 800; color: #fbbf24;">⚡</span>
+        </button>
         <button class="mini-btn play-btn" id="mini-play-btn" aria-label="Play/Pause">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" id="mini-play-icon">
             <polygon points="5 3 19 12 5 21 5 3"/>
           </svg>
         </button>
         <button class="mini-btn" id="mini-forward-btn" aria-label="Skip 30 seconds">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <polyline points="13 17 18 12 13 7"/>
             <polyline points="6 17 11 12 6 7"/>
           </svg>
@@ -49,6 +55,15 @@ export class MiniPlayer {
       if (e.target.closest('.mini-btn')) return;
       this.onExpand();
     });
+
+    // 1-Tap Instant Skip Ad Break
+    const skipAdBtn = this.container.querySelector('#mini-skip-ad-btn');
+    if (skipAdBtn) {
+      skipAdBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        audioPlayer.skipCurrentAdBreak(60);
+      });
+    }
 
     // Play/Pause button
     const playBtn = this.container.querySelector('#mini-play-btn');
@@ -94,7 +109,21 @@ export class MiniPlayer {
     const subtitle = this.container.querySelector('#mini-subtitle');
     const playIcon = this.container.querySelector('#mini-play-icon');
 
-    if (cover) cover.src = podcast?.cover || '/icon.svg';
+    if (cover) {
+      const rawCover = podcast?.cover || episode?.cover;
+      const safeUrl = audioPlayer.getSafeArtworkUrl(rawCover);
+      delete cover.dataset.triedProxy;
+      cover.src = safeUrl;
+      cover.onerror = () => {
+        if (!cover.dataset.triedProxy && safeUrl.startsWith('http')) {
+          cover.dataset.triedProxy = 'true';
+          cover.src = `https://images.weserv.nl/?url=${encodeURIComponent(safeUrl)}&w=120&h=120&fit=cover`;
+        } else {
+          cover.src = new URL('./apple-touch-icon.png', window.location.href).href;
+        }
+      };
+    }
+
     if (title) title.textContent = episode.title;
     if (subtitle) subtitle.textContent = podcast?.title || 'Podcast';
 

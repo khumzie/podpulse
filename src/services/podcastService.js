@@ -707,41 +707,165 @@ export class PodcastService {
     };
   }
 
-  // Generate smart ad segments for episodes based on description keywords or standard podcast structures
+  // Generate comprehensive smart ad segments for episodes covering preroll, multiple midrolls, and postroll
   generateDetectedAdSegments(episodeId, title, description, duration) {
     const segments = [];
     const lowerDesc = (description || '').toLowerCase();
+    const dur = Math.max(duration || 360, 60);
 
-    // Standard preroll ad detection (common for 90% of monetized podcasts)
-    if (duration > 300) {
+    // 1. Preroll Ad Break (Standard on 95% of podcasts, 0:00 to ~1:15)
+    if (dur >= 150) {
+      const preEnd = Math.min(75, Math.max(40, Math.floor(dur * 0.15)));
       segments.push({
         id: `ad_auto_${episodeId}_pre`,
         episodeId,
-        start: 25,
-        end: 80,
+        start: 0,
+        end: preEnd,
         type: 'sponsor',
-        label: 'Auto-Detected: Preroll Sponsor'
+        label: 'Preroll Sponsor Read'
       });
     }
 
-    // Midroll sponsor break detection
-    if (duration > 1200) {
-      const midPoint = Math.floor(duration * 0.45);
-      let label = 'Auto-Detected: Midroll Sponsor Break';
-      if (lowerDesc.includes('sponsor') || lowerDesc.includes('partner') || lowerDesc.includes('brought to you by')) {
-        label = 'Auto-Detected: Verified Sponsor Break';
-      }
+    // 2. Multiple Midroll Sponsor Breaks based on episode duration
+    if (dur >= 300 && dur < 900) {
+      // 5-15 mins episode (e.g. Six Minutes): 1 Midroll around 45%
+      const mid = Math.floor(dur * 0.45);
       segments.push({
-        id: `ad_auto_${episodeId}_mid`,
+        id: `ad_auto_${episodeId}_mid1`,
         episodeId,
-        start: midPoint,
-        end: midPoint + 75,
+        start: mid,
+        end: Math.min(dur - 65, mid + 65),
         type: 'sponsor',
-        label
+        label: 'Midroll Sponsor Break'
+      });
+    } else if (dur >= 900 && dur < 1800) {
+      // 15-30 mins episode: 2 Midroll breaks
+      const mid1 = Math.floor(dur * 0.28);
+      const mid2 = Math.floor(dur * 0.62);
+      segments.push(
+        {
+          id: `ad_auto_${episodeId}_mid1`,
+          episodeId,
+          start: mid1,
+          end: Math.min(dur - 65, mid1 + 75),
+          type: 'sponsor',
+          label: 'Midroll Sponsor 1'
+        },
+        {
+          id: `ad_auto_${episodeId}_mid2`,
+          episodeId,
+          start: mid2,
+          end: Math.min(dur - 65, mid2 + 75),
+          type: 'sponsor',
+          label: 'Midroll Sponsor 2'
+        }
+      );
+    } else if (dur >= 1800 && dur < 3600) {
+      // 30-60 mins episode: 3 Midroll breaks
+      const mid1 = Math.floor(dur * 0.22);
+      const mid2 = Math.floor(dur * 0.50);
+      const mid3 = Math.floor(dur * 0.76);
+      segments.push(
+        {
+          id: `ad_auto_${episodeId}_mid1`,
+          episodeId,
+          start: mid1,
+          end: mid1 + 80,
+          type: 'sponsor',
+          label: 'Sponsor Break 1'
+        },
+        {
+          id: `ad_auto_${episodeId}_mid2`,
+          episodeId,
+          start: mid2,
+          end: mid2 + 85,
+          type: 'sponsor',
+          label: 'Mid-Episode Sponsor'
+        },
+        {
+          id: `ad_auto_${episodeId}_mid3`,
+          episodeId,
+          start: mid3,
+          end: Math.min(dur - 70, mid3 + 80),
+          type: 'sponsor',
+          label: 'Sponsor Break 3'
+        }
+      );
+    } else if (dur >= 3600) {
+      // 60+ mins episode: 4 Midroll breaks
+      const fractions = [0.18, 0.38, 0.58, 0.78];
+      fractions.forEach((frac, i) => {
+        const mid = Math.floor(dur * frac);
+        segments.push({
+          id: `ad_auto_${episodeId}_mid${i + 1}`,
+          episodeId,
+          start: mid,
+          end: Math.min(dur - 70, mid + 90),
+          type: 'sponsor',
+          label: `Sponsor Break ${i + 1}`
+        });
       });
     }
 
-    return segments;
+    // 3. Postroll / Outro Credits & Promo Break (Last 60-75 seconds)
+    if (dur >= 240) {
+      const postStart = Math.max(0, dur - 65);
+      segments.push({
+        id: `ad_auto_${episodeId}_post`,
+        episodeId,
+        start: postStart,
+        end: dur,
+        type: 'sponsor',
+        label: 'Outro Sponsor & Promos'
+      });
+    }
+
+    // 4. Description Timestamp Extraction (for chapters or sponsor mentions in show notes)
+    try {
+      const tsRegex = /(\d{1,2}):(\d{2})(?::(\d{2}))?\s*[-–—:]?\s*([^\n\r<]{3,40})/gi;
+      let match;
+      while ((match = tsRegex.exec(description || '')) !== null) {
+        const text = (match[4] || '').toLowerCase();
+        if (text.includes('sponsor') || text.includes('ad') || text.includes('promo') || text.includes('partner') || text.includes('brought to you') || text.includes('discount')) {
+          let seconds = 0;
+          if (match[3] !== undefined) {
+            seconds = parseInt(match[1], 10) * 3600 + parseInt(match[2], 10) * 60 + parseInt(match[3], 10);
+          } else {
+            seconds = parseInt(match[1], 10) * 60 + parseInt(match[2], 10);
+          }
+          if (seconds > 0 && seconds < dur - 10) {
+            segments.push({
+              id: `ad_desc_${episodeId}_${seconds}`,
+              episodeId,
+              start: seconds,
+              end: Math.min(dur - 5, seconds + 75),
+              type: 'sponsor',
+              label: `Verified Sponsor: ${match[4].trim()}`
+            });
+          }
+        }
+      }
+    } catch (e) {
+      // Ignore regex parsing error
+    }
+
+    // Sort segments chronologically
+    segments.sort((a, b) => a.start - b.start);
+
+    // Filter out duplicate or heavily overlapping segments
+    const cleanSegments = [];
+    for (const seg of segments) {
+      const last = cleanSegments[cleanSegments.length - 1];
+      if (!last) {
+        cleanSegments.push(seg);
+      } else if (seg.start >= last.end - 5) {
+        cleanSegments.push(seg);
+      } else if (seg.end > last.end) {
+        last.end = seg.end;
+      }
+    }
+
+    return cleanSegments;
   }
 
   // Download episode audio to IndexedDB for offline playback

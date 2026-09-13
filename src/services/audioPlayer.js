@@ -385,22 +385,100 @@ class AudioPlayerService {
     }, 1000);
   }
 
-  // Update MediaSession on iOS
+  // Sanitize and resolve artwork URL to absolute HTTPS URL for iOS compatibility
+  getSafeArtworkUrl(url) {
+    if (!url || typeof url !== 'string' || url.trim() === '') {
+      return new URL('./apple-touch-icon.png', window.location.href).href;
+    }
+    url = url.trim();
+    if (url.startsWith('/')) {
+      return new URL('.' + url, window.location.href).href;
+    }
+    if (url.startsWith('http://')) {
+      return url.replace('http://', 'https://');
+    }
+    if (!url.startsWith('http')) {
+      return new URL(url, window.location.href).href;
+    }
+    return url;
+  }
+
+  // 1-Tap Skip Commercial Break (+60s or skip to end of current ad)
+  async skipCurrentAdBreak(secondsToSkip = 60) {
+    if (!this.currentEpisode) return;
+
+    const now = this.currentTime;
+    // Check if we are currently inside an already detected segment
+    const activeSeg = (this.currentAdSegments || []).find(s => now >= s.start && now < s.end);
+
+    let jumpTarget;
+    let secondsSaved;
+    let label;
+
+    if (activeSeg) {
+      jumpTarget = activeSeg.end + 0.5;
+      secondsSaved = Math.max(1, activeSeg.end - now);
+      label = activeSeg.label || 'Sponsor Ad Break';
+    } else {
+      jumpTarget = Math.min((this.duration || Infinity) - 1, now + secondsToSkip);
+      secondsSaved = secondsToSkip;
+      label = 'User-Skipped Ad Break';
+
+      // Save this new ad segment to IndexedDB so this episode remembers it!
+      const newSeg = {
+        id: 'ad_user_' + Date.now(),
+        episodeId: this.currentEpisode.id,
+        start: Math.floor(now),
+        end: Math.ceil(jumpTarget),
+        type: 'sponsor',
+        label: 'User-Saved Ad Break'
+      };
+      await storage.saveAdSegment(newSeg);
+      this.currentAdSegments.push(newSeg);
+      this.currentAdSegments.sort((a, b) => a.start - b.start);
+    }
+
+    this.seek(jumpTarget);
+    storage.recordAdSkip(secondsSaved);
+
+    this.notify('adSkipped', {
+      segment: { label },
+      secondsSaved: Math.round(secondsSaved),
+      newTime: jumpTarget
+    });
+
+    this.notify('stateChange', { adSegments: this.currentAdSegments });
+    return jumpTarget;
+  }
+
+  // Update MediaSession on iOS Lock Screen / Control Center / Dynamic Island
   updateMediaSession() {
     if (!('mediaSession' in navigator) || !this.currentEpisode) return;
 
-    navigator.mediaSession.metadata = new MediaMetadata({
-      title: this.currentEpisode.title,
-      artist: this.currentPodcast?.author || 'PodPulse',
-      album: this.currentPodcast?.title || 'PodPulse Podcast',
-      artwork: [
-        {
-          src: this.currentPodcast?.cover || '/icon.svg',
-          sizes: '512x512',
-          type: 'image/jpeg'
-        }
-      ]
-    });
+    const rawCover = this.currentPodcast?.cover || this.currentEpisode?.cover;
+    const safeArtUrl = this.getSafeArtworkUrl(rawCover);
+    const localAppleTouchIcon = new URL('./apple-touch-icon.png', window.location.href).href;
+    const localIcon512 = new URL('./icon-512.png', window.location.href).href;
+
+    try {
+      navigator.mediaSession.metadata = new MediaMetadata({
+        title: this.currentEpisode.title,
+        artist: this.currentPodcast?.author || 'PodPulse',
+        album: this.currentPodcast?.title || 'PodPulse Podcast',
+        artwork: [
+          { src: safeArtUrl, sizes: '96x96' },
+          { src: safeArtUrl, sizes: '128x128' },
+          { src: safeArtUrl, sizes: '192x192' },
+          { src: safeArtUrl, sizes: '256x256' },
+          { src: safeArtUrl, sizes: '384x384' },
+          { src: safeArtUrl, sizes: '512x512' },
+          { src: localAppleTouchIcon, sizes: '180x180', type: 'image/png' },
+          { src: localIcon512, sizes: '512x512', type: 'image/png' }
+        ]
+      });
+    } catch (err) {
+      console.warn('MediaSession metadata set error:', err);
+    }
 
     if (this.duration && !isNaN(this.duration)) {
       try {

@@ -31,7 +31,7 @@ export class PlayerModal {
 
         <!-- Big Cover Art -->
         <div class="player-artwork-wrapper" id="player-artwork-wrapper">
-          <img class="player-artwork-img" id="player-cover-img" src="/icon.svg" alt="Episode Cover" />
+          <img class="player-artwork-img" id="player-cover-img" src="./apple-touch-icon.png" alt="Episode Cover" />
           <div class="player-ad-shield-badge">
             <div class="shield-pulse"></div>
             <span>Ad Shield Active</span>
@@ -58,6 +58,17 @@ export class PlayerModal {
             <span id="player-time-current">0:00</span>
             <span id="player-time-remaining">-0:00</span>
           </div>
+        </div>
+
+        <!-- Quick Ad Shield Skip Bar -->
+        <div style="display: flex; justify-content: space-between; align-items: center; background: rgba(139,92,246,0.08); border: 1px solid rgba(139,92,246,0.25); border-radius: 12px; padding: 7px 12px; margin: -6px 0 2px 0;">
+          <div style="display: flex; align-items: center; gap: 8px; font-size: 11.5px; font-weight: 700; color: #a5b4fc;">
+            <div class="shield-pulse"></div>
+            <span id="player-ad-status-text">Ad Shield Active</span>
+          </div>
+          <button id="player-manual-skip-ad-btn" style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); color: #fff; border: none; padding: 5px 12px; border-radius: 8px; font-size: 11.5px; font-weight: 800; cursor: pointer; display: flex; align-items: center; gap: 4px; box-shadow: 0 2px 6px rgba(245,158,11,0.3);">
+            ⚡ Skip Ad Break (+60s)
+          </button>
         </div>
 
         <!-- Main Transport Controls -->
@@ -220,6 +231,14 @@ export class PlayerModal {
       this.isDragging = false;
     });
 
+    // Manual Skip Ad Break Button
+    const manualSkipBtn = this.container.querySelector('#player-manual-skip-ad-btn');
+    if (manualSkipBtn) {
+      manualSkipBtn.addEventListener('click', () => {
+        audioPlayer.skipCurrentAdBreak(60);
+      });
+    }
+
     // Audio Player State Listener
     audioPlayer.on('stateChange', () => {
       this.updateTrackInfo();
@@ -254,9 +273,20 @@ export class PlayerModal {
     const bigIcon = this.container.querySelector('#player-big-icon');
     const artworkWrapper = this.container.querySelector('#player-artwork-wrapper');
 
-    const coverUrl = pod?.cover || '/icon.svg';
-    ambientBg.style.backgroundImage = `url(${coverUrl})`;
-    coverImg.src = coverUrl;
+    const rawCover = pod?.cover || ep?.cover;
+    const safeUrl = audioPlayer.getSafeArtworkUrl(rawCover);
+    ambientBg.style.backgroundImage = `url(${safeUrl})`;
+    delete coverImg.dataset.triedProxy;
+    coverImg.src = safeUrl;
+    coverImg.onerror = () => {
+      if (!coverImg.dataset.triedProxy && safeUrl.startsWith('http')) {
+        coverImg.dataset.triedProxy = 'true';
+        coverImg.src = `https://images.weserv.nl/?url=${encodeURIComponent(safeUrl)}&w=400&h=400&fit=cover`;
+      } else {
+        coverImg.src = new URL('./apple-touch-icon.png', window.location.href).href;
+      }
+    };
+
     titleEl.textContent = ep.title;
     podEl.textContent = pod?.title || 'Podcast';
     authorEl.textContent = pod?.author || '';

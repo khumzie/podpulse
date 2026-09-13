@@ -28,14 +28,31 @@ async function buildSixMinutes() {
     }
 
     const epId = 'ep_sixmin_' + (items.length - idx);
+    const midPoint = Math.floor(duration * 0.45);
     const adSegments = [
       {
         id: 'ad_' + epId + '_pre',
         episodeId: epId,
-        start: 15,
-        end: 45,
+        start: 0,
+        end: Math.min(75, Math.floor(duration * 0.18)),
         type: 'sponsor',
-        label: 'Auto-Detected: Preroll Sponsor'
+        label: 'Preroll Sponsor Read'
+      },
+      {
+        id: 'ad_' + epId + '_mid',
+        episodeId: epId,
+        start: midPoint,
+        end: Math.min(duration - 65, midPoint + 65),
+        type: 'sponsor',
+        label: 'Midroll Sponsor Break'
+      },
+      {
+        id: 'ad_' + epId + '_post',
+        episodeId: epId,
+        start: Math.max(0, duration - 55),
+        end: duration,
+        type: 'sponsor',
+        label: 'Outro Sponsor & Promos'
       }
     ];
 
