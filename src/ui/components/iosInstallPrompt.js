@@ -7,9 +7,7 @@ export class IosInstallPrompt {
   }
 
   render() {
-    const currentUrl = window.location.origin.includes('localhost') 
-      ? 'http://192.168.0.120:5173' 
-      : window.location.origin;
+    const currentUrl = 'https://khumzie.github.io/podpulse/';
     
     const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(currentUrl)}&bgcolor=090B10&color=8b5cf6&margin=1`;
 
@@ -17,7 +15,7 @@ export class IosInstallPrompt {
       <div class="player-sheet-content" style="background: var(--bg-surface); border-top-left-radius: var(--radius-lg); border-top-right-radius: var(--radius-lg); border-top: 1px solid var(--border-card); padding: 24px; max-width: 440px; margin: 0 auto; box-shadow: 0 -10px 40px rgba(0,0,0,0.6); max-height: 88vh; overflow-y: auto;">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
           <div style="display: flex; align-items: center; gap: 10px;">
-            <img src="/apple-touch-icon.png" style="width: 42px; height: 42px; border-radius: 10px; box-shadow: 0 4px 12px rgba(139,92,246,0.3);" alt="PodPulse" />
+            <img src="./apple-touch-icon.png" style="width: 42px; height: 42px; border-radius: 10px; box-shadow: 0 4px 12px rgba(139,92,246,0.3);" alt="PodPulse" />
             <div>
               <div style="font-size: 17px; font-weight: 800; color: #ffffff;">Add PodPulse to iPhone</div>
               <div style="font-size: 12px; color: var(--text-secondary);">Standalone PWA • Offline Audio</div>
