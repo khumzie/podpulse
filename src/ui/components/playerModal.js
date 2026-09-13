@@ -351,10 +351,37 @@ export class PlayerModal {
             (${Math.round(seg.end - seg.start)}s)
           </span>
         </div>
-        <button class="ad-jump-btn" id="btn-jump-${seg.id || seg.start}">
-          Skip Ahead
-        </button>
+        <div style="display: flex; gap: 6px; align-items: center;">
+          <button class="ad-jump-btn" id="btn-propagate-${seg.id || seg.start}" title="Apply this ad break cadence across all episodes in this show" style="background: rgba(59,130,246,0.15); color: #93c5fd; border: 1px solid rgba(59,130,246,0.3); font-size: 11px; padding: 5px 8px;">
+            🔄 Sync Show
+          </button>
+          <button class="ad-jump-btn" id="btn-jump-${seg.id || seg.start}">
+            Skip
+          </button>
+        </div>
       `;
+
+      const propBtn = card.querySelector(`#btn-propagate-${seg.id || seg.start}`);
+      if (propBtn) {
+        propBtn.addEventListener('click', async (e) => {
+          e.stopPropagation();
+          propBtn.disabled = true;
+          propBtn.textContent = 'Syncing...';
+          const count = await storage.propagateCadenceToPodcastEpisodes(
+            audioPlayer.currentPodcast.id,
+            audioPlayer.currentEpisode,
+            seg.start,
+            seg.end,
+            seg.label
+          );
+          propBtn.textContent = `✓ Synced (${count})`;
+          audioPlayer.notify('adCadencePropagated', {
+            podcast: audioPlayer.currentPodcast,
+            count,
+            segment: seg
+          });
+        });
+      }
 
       card.querySelector(`#btn-jump-${seg.id || seg.start}`).addEventListener('click', () => {
         audioPlayer.seek(seg.end + 0.2);

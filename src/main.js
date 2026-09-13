@@ -131,6 +131,26 @@ class App {
         setTimeout(() => toast.remove(), 300);
       }, 3500);
     });
+
+    // Display high-impact toast when a cadence is propagated across all episodes
+    audioPlayer.on('adCadencePropagated', ({ podcast, count }) => {
+      const toast = document.createElement('div');
+      toast.className = 'hud-toast';
+      toast.style.borderColor = 'rgba(59, 130, 246, 0.6)';
+      toast.style.background = 'rgba(15, 23, 42, 0.95)';
+      toast.innerHTML = `
+        <span style="font-size: 16px;">🔄</span>
+        <span>Ad cadence synced across all ${count} episodes of <em>${podcast?.title || 'Show'}</em>!</span>
+      `;
+      toastContainer.appendChild(toast);
+
+      setTimeout(() => {
+        toast.style.opacity = '0';
+        toast.style.transform = 'translateY(-20px)';
+        toast.style.transition = 'all 0.3s ease';
+        setTimeout(() => toast.remove(), 300);
+      }, 4000);
+    });
   }
 
   async switchTab(tabName) {

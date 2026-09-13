@@ -191,8 +191,12 @@ class AudioPlayerService {
   async playEpisode(episode, podcast, queue = null) {
     this.currentEpisode = episode;
     this.currentPodcast = podcast;
-    if (queue && Array.isArray(queue)) {
-      this.queue = queue;
+
+    if (!this.currentPodcast && episode.podcastId) {
+      this.currentPodcast = await storage.getPodcast(episode.podcastId);
+    }
+    if (this.currentPodcast) {
+      storage.sanitizePodcastCover(this.currentPodcast);
     }
 
     // Clean up previous blob URL
@@ -338,8 +342,8 @@ class AudioPlayerService {
     this.notify('stateChange', { autoSkipAds: enabled });
   }
 
-  // Add custom user ad marker
-  async addCustomAdSegment(start, end, label = 'User Marked Ad') {
+  // Add custom user ad marker with automatic cadence propagation to all episodes in the show
+  async addCustomAdSegment(start, end, label = 'User Marked Ad', propagate = true) {
     if (!this.currentEpisode) return;
     const newSeg = {
       id: 'ad_user_' + Date.now(),
@@ -352,6 +356,26 @@ class AudioPlayerService {
 
     await storage.saveAdSegment(newSeg);
     this.currentAdSegments.push(newSeg);
+    this.currentAdSegments.sort((a, b) => a.start - b.start);
+
+    // Propagate cadence to all other episodes of this show
+    if (propagate && this.currentPodcast?.id) {
+      const count = await storage.propagateCadenceToPodcastEpisodes(
+        this.currentPodcast.id,
+        this.currentEpisode,
+        newSeg.start,
+        newSeg.end,
+        newSeg.label
+      );
+      if (count > 0) {
+        this.notify('adCadencePropagated', {
+          podcast: this.currentPodcast,
+          count,
+          segment: newSeg
+        });
+      }
+    }
+
     this.notify('stateChange', { adSegments: this.currentAdSegments });
     return newSeg;
   }
@@ -387,10 +411,15 @@ class AudioPlayerService {
 
   // Sanitize and resolve artwork URL to absolute HTTPS URL for iOS compatibility
   getSafeArtworkUrl(url) {
-    if (!url || typeof url !== 'string' || url.trim() === '') {
-      return new URL('./apple-touch-icon.png', window.location.href).href;
+    const SIX_MINUTES_COVER = 'https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/dc/86/87/dc86876b-75a5-3dcc-dfc7-93c00d5d73df/mza_11649606284826288390.jpeg/600x600bb.jpg';
+    if (!url || typeof url !== 'string' || url.trim() === '' || url.includes('/icon.svg')) {
+      return SIX_MINUTES_COVER;
     }
     url = url.trim();
+    // Auto-heal expired Apple CDN links that returned 404
+    if (url.includes('919f6de3-d14f-f2ae-e6b8-6b83f3e1a8fa') || url.includes('Podcasts126')) {
+      return SIX_MINUTES_COVER;
+    }
     if (url.startsWith('/')) {
       return new URL('.' + url, window.location.href).href;
     }
@@ -403,8 +432,8 @@ class AudioPlayerService {
     return url;
   }
 
-  // 1-Tap Skip Commercial Break (+60s or skip to end of current ad)
-  async skipCurrentAdBreak(secondsToSkip = 60) {
+  // 1-Tap Skip Commercial Break (+60s or skip to end of current ad) with full show cadence propagation
+  async skipCurrentAdBreak(secondsToSkip = 60, propagate = true) {
     if (!this.currentEpisode) return;
 
     const now = this.currentTime;
@@ -436,6 +465,24 @@ class AudioPlayerService {
       await storage.saveAdSegment(newSeg);
       this.currentAdSegments.push(newSeg);
       this.currentAdSegments.sort((a, b) => a.start - b.start);
+
+      // Propagate this ad cadence across all other episodes in the podcast!
+      if (propagate && this.currentPodcast?.id) {
+        const count = await storage.propagateCadenceToPodcastEpisodes(
+          this.currentPodcast.id,
+          this.currentEpisode,
+          newSeg.start,
+          newSeg.end,
+          newSeg.label
+        );
+        if (count > 0) {
+          this.notify('adCadencePropagated', {
+            podcast: this.currentPodcast,
+            count,
+            segment: newSeg
+          });
+        }
+      }
     }
 
     this.seek(jumpTarget);

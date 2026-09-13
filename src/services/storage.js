@@ -115,6 +115,16 @@ class StorageService {
     return this.put('podcasts', podcast);
   }
 
+  sanitizePodcastCover(pod) {
+    const SIX_MINUTES_COVER = 'https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/dc/86/87/dc86876b-75a5-3dcc-dfc7-93c00d5d73df/mza_11649606284826288390.jpeg/600x600bb.jpg';
+    if (pod && (pod.id === 'itunes_1348470106' || (pod.title && pod.title.toLowerCase().includes('six minutes')))) {
+      if (pod.cover !== SIX_MINUTES_COVER) {
+        pod.cover = SIX_MINUTES_COVER;
+        this.savePodcast(pod).catch(() => {});
+      }
+    }
+  }
+
   async getPodcast(id) {
     let pod = await this.get('podcasts', id);
     if (!pod && id !== undefined && id !== null) {
@@ -128,11 +138,16 @@ class StorageService {
         pod = all.find(p => p.id === id || String(p.id) === String(id) || (p.itunesId && String(p.itunesId) === String(id))) || null;
       }
     }
+    if (pod) {
+      this.sanitizePodcastCover(pod);
+    }
     return pod;
   }
 
   async getAllPodcasts() {
-    return this.getAll('podcasts');
+    const all = await this.getAll('podcasts');
+    all.forEach(p => this.sanitizePodcastCover(p));
+    return all;
   }
 
   async deletePodcast(id) {
@@ -295,6 +310,76 @@ class StorageService {
 
   async deleteAdSegment(id) {
     return this.delete('ad_segments', id);
+  }
+
+  // Propagate marked ad cadence across ALL episodes of a podcast series
+  async propagateCadenceToPodcastEpisodes(podcastId, sourceEpisode, start, end, label = 'Show Cadence Ad') {
+    if (!podcastId || !sourceEpisode) return 0;
+    const episodes = await this.getEpisodesByPodcast(podcastId);
+    if (!episodes || episodes.length === 0) return 0;
+
+    const srcDuration = sourceEpisode.duration || 360;
+    const isPreroll = start <= 90;
+    const isOutro = srcDuration > 120 && (srcDuration - end) <= 100;
+    const startPct = start / srcDuration;
+    const endPct = end / srcDuration;
+    const segLength = Math.max(15, end - start);
+
+    let propagatedCount = 0;
+
+    for (const ep of episodes) {
+      if (ep.id === sourceEpisode.id) continue;
+      const targetDur = ep.duration || srcDuration;
+
+      let targetStart, targetEnd;
+      if (isPreroll) {
+        // Prerolls are fixed at beginning of episode
+        targetStart = start;
+        targetEnd = Math.min(targetDur - 10, end);
+      } else if (isOutro) {
+        // Outros are fixed from the end of the episode
+        const fromEnd = srcDuration - start;
+        targetStart = Math.max(0, targetDur - fromEnd);
+        targetEnd = targetDur;
+      } else {
+        // Midrolls are proportional or absolute
+        if (Math.abs(targetDur - srcDuration) < 120) {
+          targetStart = start;
+          targetEnd = Math.min(targetDur - 10, end);
+        } else {
+          targetStart = Math.round(targetDur * startPct);
+          targetEnd = Math.min(targetDur - 10, targetStart + segLength);
+        }
+      }
+
+      if (targetStart >= targetEnd || targetStart < 0) continue;
+
+      // Check if episode already has an overlapping segment
+      const existing = await this.getAdSegmentsForEpisode(ep.id);
+      const overlaps = existing.some(s => 
+        (targetStart >= s.start && targetStart <= s.end) || 
+        (targetEnd >= s.start && targetEnd <= s.end)
+      );
+
+      if (!overlaps) {
+        await this.saveAdSegment({
+          id: `ad_cadence_${ep.id}_${Math.round(targetStart)}`,
+          episodeId: ep.id,
+          start: Math.round(targetStart),
+          end: Math.round(targetEnd),
+          type: 'sponsor',
+          label: `${label} (Cadence)`
+        });
+        propagatedCount++;
+      }
+    }
+
+    // Persist cadence rule for any future imported episodes of this show
+    const cadences = await this.getSetting(`cadence_${podcastId}`, []);
+    cadences.push({ isPreroll, isOutro, start, end, startPct, endPct, segLength, label });
+    await this.setSetting(`cadence_${podcastId}`, cadences);
+
+    return propagatedCount;
   }
 
   // --- Settings & Stats API ---
