@@ -1,0 +1,375 @@
+/* Full-Screen iOS Player Modal Sheet */
+
+.player-sheet-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 70;
+  background: var(--bg-base);
+  display: flex;
+  flex-direction: column;
+  transform: translateY(100%);
+  transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding-top: var(--safe-top);
+  padding-bottom: calc(var(--safe-bottom) + 20px);
+}
+
+.player-sheet-modal.open {
+  transform: translateY(0%);
+}
+
+.ambient-background-blur {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 450px;
+  background-size: cover;
+  background-position: center;
+  filter: blur(60px) opacity(0.28);
+  pointer-events: none;
+  z-index: 0;
+}
+
+.player-sheet-content {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  padding: 12px 24px;
+  max-width: 480px;
+  margin: 0 auto;
+  width: 100%;
+  gap: 20px;
+}
+
+.player-sheet-top-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  height: 44px;
+}
+
+.sheet-drag-handle {
+  width: 38px;
+  height: 4.5px;
+  background: rgba(255, 255, 255, 0.25);
+  border-radius: var(--radius-full);
+  margin: 0 auto;
+}
+
+.sheet-close-btn {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-secondary);
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.sheet-close-btn:active {
+  transform: scale(0.9);
+}
+
+/* Big Cover Art */
+.player-artwork-wrapper {
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.6), 0 0 1px rgba(255, 255, 255, 0.2);
+  margin-top: 6px;
+  position: relative;
+}
+
+.player-artwork-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.4s ease;
+}
+
+.player-artwork-wrapper.playing .player-artwork-img {
+  transform: scale(1.02);
+}
+
+/* Ad Shield Badge on Player */
+.player-ad-shield-badge {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  background: rgba(13, 17, 26, 0.85);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(16, 185, 129, 0.4);
+  border-radius: var(--radius-full);
+  padding: 6px 12px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11.5px;
+  font-weight: 700;
+  color: var(--shield-light);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+}
+
+/* Track Metadata */
+.player-meta-container {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.player-track-title {
+  font-size: 20px;
+  font-weight: 800;
+  color: var(--text-primary);
+  line-height: 1.25;
+}
+
+.player-track-podcast {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--accent-light);
+}
+
+.player-track-author {
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+/* Enhanced Scrubber with Ad Segment Blocks */
+.scrubber-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.scrubber-track-container {
+  position: relative;
+  width: 100%;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  touch-action: none;
+}
+
+.scrubber-track-bg {
+  position: relative;
+  width: 100%;
+  height: 6px;
+  background: rgba(255, 255, 255, 0.12);
+  border-radius: var(--radius-full);
+  overflow: hidden;
+}
+
+.scrubber-progress-fill {
+  position: absolute;
+  left: 0;
+  top: 0;
+  height: 100%;
+  background: var(--accent-gradient);
+  border-radius: var(--radius-full);
+  pointer-events: none;
+}
+
+/* Yellow/Amber Ad Highlight Blocks on the Progress Bar */
+.ad-segment-marker-block {
+  position: absolute;
+  top: 0;
+  height: 100%;
+  background: #f59e0b;
+  opacity: 0.85;
+  box-shadow: 0 0 6px rgba(245, 158, 11, 0.8);
+  pointer-events: none;
+  z-index: 2;
+}
+
+.scrubber-thumb {
+  position: absolute;
+  top: 50%;
+  width: 16px;
+  height: 16px;
+  background: #ffffff;
+  border-radius: 50%;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.6);
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  transition: transform 0.1s ease;
+  z-index: 5;
+}
+
+.scrubber-track-container:active .scrubber-thumb {
+  transform: translate(-50%, -50%) scale(1.3);
+}
+
+.scrubber-timestamps {
+  display: flex;
+  justify-content: space-between;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--text-tertiary);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Main Transport Controls */
+.transport-controls-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+}
+
+.transport-btn {
+  background: none;
+  border: none;
+  color: var(--text-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: transform 0.15s ease, opacity 0.15s ease;
+}
+
+.transport-btn:active {
+  transform: scale(0.88);
+}
+
+.transport-btn.skip-btn {
+  position: relative;
+  width: 46px;
+  height: 46px;
+  color: var(--text-secondary);
+}
+
+.transport-btn.skip-btn:hover {
+  color: var(--text-primary);
+}
+
+.skip-sec-badge {
+  position: absolute;
+  font-size: 10px;
+  font-weight: 800;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  letter-spacing: -0.5px;
+}
+
+.transport-btn.play-pause-big {
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  background: var(--text-primary);
+  color: #080A0F;
+  box-shadow: 0 8px 24px rgba(255, 255, 255, 0.25);
+  font-size: 26px;
+}
+
+.transport-btn.play-pause-big:active {
+  transform: scale(0.92);
+}
+
+/* Secondary Audio Toolbar */
+.player-secondary-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-around;
+  padding: 10px 0;
+  border-top: 1px solid var(--border-subtle);
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.tool-pill-btn {
+  background: rgba(255, 255, 255, 0.07);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-secondary);
+  border-radius: var(--radius-full);
+  padding: 6px 14px;
+  font-size: 12px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.tool-pill-btn.active {
+  background: rgba(139, 92, 246, 0.2);
+  border-color: rgba(139, 92, 246, 0.5);
+  color: #ffffff;
+}
+
+.tool-pill-btn:active {
+  transform: scale(0.94);
+}
+
+/* Detected Ad Segments List in Player */
+.player-segments-section {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 4px;
+}
+
+.segments-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-secondary);
+}
+
+.ad-card-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: rgba(245, 158, 11, 0.08);
+  border: 1px solid rgba(245, 158, 11, 0.25);
+  border-radius: var(--radius-sm);
+  padding: 10px 14px;
+}
+
+.ad-card-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.ad-card-label {
+  font-size: 12.5px;
+  font-weight: 700;
+  color: #fbbf24;
+}
+
+.ad-card-time {
+  font-size: 11px;
+  color: var(--text-tertiary);
+  font-variant-numeric: tabular-nums;
+}
+
+.ad-jump-btn {
+  background: rgba(245, 158, 11, 0.2);
+  border: 1px solid rgba(245, 158, 11, 0.4);
+  color: #fbbf24;
+  padding: 5px 10px;
+  border-radius: var(--radius-xs);
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.ad-jump-btn:active {
+  transform: scale(0.92);
+}
