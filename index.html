@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+    <title>PodPulse — Ad-Free iPhone Podcast PWA</title>
+    
+    <!-- iOS PWA Meta Tags -->
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-touch-fullscreen" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="PodPulse" />
+    <meta name="application-name" content="PodPulse" />
+    <meta name="format-detection" content="telephone=no" />
+    <meta name="theme-color" content="#080A0F" />
+    <meta name="description" content="Intelligent iPhone Podcast PWA with automatic audio ad-skipping, offline downloads, and series remaining time tracking." />
+
+    <!-- Favicon & Touch Icons -->
+    <link rel="icon" type="image/svg+xml" href="./icon.svg" />
+    <link rel="apple-touch-icon" href="./apple-touch-icon.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="./apple-touch-icon.png" />
+    <link rel="apple-touch-icon-precomposed" href="./apple-touch-icon.png" />
+    <link rel="manifest" href="./manifest.webmanifest" />
+
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+
+    <!-- Stylesheets -->
+    <script type="module" crossorigin src="./assets/index-C7ZBQLSn.js"></script>
+    <link rel="stylesheet" crossorigin href="./assets/index-DlX_nG6M.css">
+  </head>
+  <body>
+    <div id="app">
+      <!-- Dynamic Offline Banner -->
+      <div id="offline-banner" class="offline-banner hidden">
+        Offline Mode — Playing from local downloads
+      </div>
+
+      <!-- App Header -->
+      <header class="app-header">
+        <div class="brand" id="brand-home-btn" style="cursor: pointer;">
+          <img src="./icon.svg" alt="PodPulse Icon" class="brand-icon" />
+          <span class="brand-title">PodPulse</span>
+        </div>
+        <div class="header-actions">
+          <div class="ad-shield-pill" id="header-shield-pill" title="View Ad Shield Settings">
+            <div class="shield-pulse"></div>
+            <span>Ad Shield</span>
+          </div>
+          <button id="header-install-btn" class="played-toggle-btn" style="background: rgba(255,255,255,0.08); border-radius: 9999px; padding: 6px 10px; font-weight: 600;" title="Install on iPhone">
+            📱 App
+          </button>
+        </div>
+      </header>
+
+      <!-- Dynamic Floating HUD Ad-Skip Toast Container -->
+      <div id="hud-toast-container" class="hud-toast-container"></div>
+
+      <!-- Main Scrollable Viewport -->
+      <main id="main-viewport" class="main-viewport"></main>
+
+      <!-- Mini Player will be mounted here -->
+      <div id="mini-player-mount"></div>
+
+      <!-- iOS Bottom Tab Bar -->
+      <nav class="ios-tab-bar" id="ios-tab-bar">
+        <button class="tab-button active" data-tab="library">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+            <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/>
+            <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
+          </svg>
+          <span>Podcasts</span>
+        </button>
+
+        <button class="tab-button" data-tab="discover">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+            <circle cx="11" cy="11" r="8"/>
+            <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+          </svg>
+          <span>Discover</span>
+        </button>
+
+        <button class="tab-button" data-tab="downloads">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+            <polyline points="7 10 12 15 17 10"/>
+            <line x1="12" y1="15" x2="12" y2="3"/>
+          </svg>
+          <span>Downloads</span>
+        </button>
+
+        <button class="tab-button" data-tab="adshield">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+          </svg>
+          <span>Ad Shield</span>
+        </button>
+      </nav>
+
+      <!-- Full Player Sheet Modal Mount -->
+      <div id="player-modal-mount"></div>
+
+      <!-- iOS Install Guidance Modal Mount -->
+      <div id="install-modal-mount"></div>
+    </div>
+
+    <!-- App Entry Point -->
+  </body>
+</html>
